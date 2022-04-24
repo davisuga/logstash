@@ -1,0 +1,5 @@
+(library
+ (name logstash)
+ (libraries opium)
+ (preprocess
+  (pps ppx_deriving_yojson)))
