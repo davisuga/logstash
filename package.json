@@ -1,14 +1,23 @@
 {
   "name": "making-a-crud-in-ocaml",
   "dependencies": {
-    "ocaml": "4.12.x",
+    "ocaml": "4.13.x",
     "@opam/dune": "*",
     "@opam/opium": "*",
     "@opam/ppx_deriving_yojson": "*",
-    "@opam/yojson": "*"
+    "@opam/yojson": "*",
+    "@opam/caqti": "*",
+    "@opam/uuidm": "*",
+    "@opam/caqti-lwt": "*",
+    "@opam/caqti-driver-mariadb": "*",
+    "@opam/ppx_rapper": "*",
+    "@opam/ppx_rapper_lwt": "*"
   },
   "devDependencies": {
     "@opam/ocaml-lsp-server": "*",
     "@opam/ocamlformat": "*"
+  },
+  "scripts": {
+    "dev": ". ./.env;esy dune exec logstash"
   }
 }
