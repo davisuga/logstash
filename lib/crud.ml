@@ -6,19 +6,23 @@ open Storage
 
 let status =
   App.get "/" (fun _req ->
-      Lwt.return (Response.of_plain_text "up and running..."))
+      Lwt.return (Response.of_plain_text "Up and running..."))
+
+let make_log_jsons = [%to_yojson: log_stored list]
 
 let read_client_logs =
-  App.get "/logs" (fun _request ->
-      let* logs = Storage.read_all_logs () in
-      let json = [%to_yojson: log_stored list] logs in
+  App.get "/logs" (fun _ ->
+      print_endline "Reading client logs";
+      let logs = DB.read_all_logs () in
+      List.map print_log_stored logs;
+      let json = make_log_jsons [] in
       Lwt.return (Response.of_json json))
 
 let post_client_log =
   App.post "/logs" (fun req ->
       let* input_log = Request.to_json_exn req in
       let log =
-        match log_stored_of_yojson input_log with
+        match log_of_yojson input_log with
         | Ok log -> log
         | Error e -> raise (Invalid_argument e)
       in
@@ -26,4 +30,6 @@ let post_client_log =
       Lwt.return (Response.of_plain_text "ok"))
 
 let start_server () =
-  App.empty |> read_client_logs |> post_client_log |> App.run_multicore
+  App.empty
+  |> Utils.with_msg "Starting server at http://localhost:3000"
+  |> status |> post_client_log |> read_client_logs |> App.run_multicore
