@@ -23,15 +23,16 @@ let read_client_logs =
 
 let post_client_log =
   App.post "/logs" (fun req ->
-      let* input_log = Request.to_json_exn req in
-      let log =
-        match log_of_yojson input_log with
-        | Ok log -> log
-        | Error e -> raise (Invalid_argument e)
-      in
-      print_string log.message;
-      Lwt.return (Response.of_plain_text "ok"))
+      let* input_log_option = Request.to_json req in
+      
+      match input_log_option |> Option.map log_of_yojson  with
+      | Some (Ok log) -> 
+          let* r = DB.insert_log_db log in
+          Lwt.return (Response.of_plain_text "ok")
 
+      | None  -> Lwt.return (Response.of_plain_text "No json here bro")
+      | Some ( Error e ) -> Lwt.return (Response.of_plain_text @@ "Invalid json input: " ^ e)
+   )
 let start_server () =
   App.empty
   |> Utils.with_msg "Starting server at http://localhost:3000"
