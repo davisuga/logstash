@@ -13,7 +13,10 @@ let make_log_jsons = [%to_yojson: log_stored list]
 let read_client_logs =
   App.get "/logs" (fun _ ->
       print_endline "Reading client logs";
-      let logs = DB.read_all_logs () in
+      
+      let* logs = DB.read_all_logs () in
+      print_endline "Client logs red";
+
       List.map print_log_stored logs;
       let json = make_log_jsons [] in
       Lwt.return (Response.of_json json))

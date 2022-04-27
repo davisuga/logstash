@@ -231,7 +231,7 @@ module MariaDB = struct
       |]
 
   let read_all_logs () =
-    dispatch "SELECT * FROM logs" [||] >|= List.map log_of_row |> Lwt_main.run
+    dispatch "SELECT * FROM logs" [||] >|= List.map log_of_row 
 end
 
 module DB = MariaDB
