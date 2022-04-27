@@ -1,6 +1,8 @@
 module type DB = Rapper_helper.CONNECTION
 
 exception Query_failed of string
+let (>>) f g x = g(f(x));;
+
 
 let ( $ ) f x = f x
 
@@ -38,77 +40,6 @@ let add_db_details ({ stack; message; level; origin } : log) =
   let created_at = Unix.time () in
 
   { stack; message; level; origin; id; created_at }
-
-module CaqtiDB = struct
-  open Caqti_lwt
-
-  let ensure_table_exists =
-    [%rapper
-      execute
-        {sql|CREATE TABLE IF NOT EXISTS logs (
-            id varchar(255) PRIMARY KEY NOT NULL,
-            created_at int NOT NULL,
-            message varchar(255) NOT NULL,
-            level varchar(255) NOT NULL,
-            origin varchar(255) NOT NULL,
-            stack varchar(255) NOT NULL
-            )|sql}]
-      ()
-
-  let pool () =
-    match Caqti_lwt.connect_pool ~max_size:10 db_url with
-    | Ok pool -> pool
-    | Error error ->
-        failwith $ Caqti_error.show error
-        |> Utils.with_msg "Failed to connect to database"
-
-  let dispatch f =
-    print_endline "dispatching action";
-
-    let* result = Caqti_lwt.Pool.use f (pool ()) in
-    match result with
-    | Ok data -> Lwt.return data
-    | Error error ->
-        error
-        |> Utils.with_msg "Failed to dispatch an action"
-        |> Caqti_error.show |> create_query_failed |> Lwt.fail
-  (*
-     let () =
-       print_endline "dispatching action";
-       dispatch ensure_table_exists
-       |> Utils.with_msg "Ensuring that the table exists"
-       |> Lwt_main.run *)
-
-  let insert_log
-      ({ stack; message; level; origin; id; created_at } : log_stored) =
-    let insert =
-      [%rapper
-        execute
-          {sql|
-                   INSERT INTO logs (id, stack, message, level, origin, created_at)
-                   VALUES(%string{id}, %string{stack}, %string{message}, %string{level}, %string{origin}, %float{created_at})
-                 |sql}
-          record_in]
-    in
-    dispatch (insert { stack; message; level; origin; created_at; id })
-
-  let read_all_logs () =
-    print_endline "reading logs...";
-    let read_all =
-      [%rapper
-        get_many
-          {sql|
-              SELECT @string{id}, @string{stack}, @string{message}, @string{level}, @string{origin}, @float{created_at}
-              FROM logs
-            |sql}
-          record_out]
-        ()
-    in
-    let* messages = dispatch read_all in
-    messages
-    (* |> List.map (fun { user_name; body; _ } -> { user_name; body }) *)
-    |> Lwt.return
-end
 
 module MariaDB = struct
   open Printf
@@ -216,7 +147,11 @@ module MariaDB = struct
     >>= or_die "Failed to execute with"
     >>= stream >>= Lwt_stream.to_list
 
-  let insert_log_db
+  let dispatch q v = try
+     dispatch q v
+    with Failure f -> Lwt.fail_with ""
+
+  let insert_log_
       ({ stack; message; level; origin; id; created_at } : log_stored) =
     dispatch
       "INSERT INTO logs (id, stack, message, level, origin, created_at) \
@@ -229,9 +164,11 @@ module MariaDB = struct
         `Float created_at;
         `String id;
       |]
-
+  let insert_log_db = add_db_details >> insert_log_
   let read_all_logs () =
     dispatch "SELECT * FROM logs" [||] >|= List.map log_of_row 
 end
 
 module DB = MariaDB
+
+
