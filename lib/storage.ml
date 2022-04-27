@@ -1,9 +1,8 @@
 module type DB = Rapper_helper.CONNECTION
 
 exception Query_failed of string
-let (>>) f g x = g(f(x));;
 
-
+let ( >> ) f g x = g (f x)
 let ( $ ) f x = f x
 
 exception Connection_failed
@@ -13,7 +12,7 @@ type log = { stack : string; message : string; level : string; origin : string }
 
 type log_stored = {
   stack : string;
-  created_at : float;
+  created_at : int;
   message : string;
   level : string;
   origin : string;
@@ -37,7 +36,7 @@ let db_url =
 
 let add_db_details ({ stack; message; level; origin } : log) =
   let id = Uuidm.v `V4 |> Uuidm.to_string in
-  let created_at = Unix.time () in
+  let created_at = Unix.time () |> int_of_float in
 
   { stack; message; level; origin; id; created_at }
 
@@ -117,7 +116,7 @@ module MariaDB = struct
     let level = M.Row.StringMap.find "level" row |> M.Field.string in
     let origin = M.Row.StringMap.find "origin" row |> M.Field.string in
     let stack = M.Row.StringMap.find "stack" row |> M.Field.string in
-    let created_at = M.Row.StringMap.find "created_at" row |> M.Field.float in
+    let created_at = M.Row.StringMap.find "created_at" row |> M.Field.int in
     let id = M.Row.StringMap.find "id" row |> M.Field.string in
     let log = { stack; message; level; origin; id; created_at } in
     log
@@ -155,28 +154,25 @@ module MariaDB = struct
            M.close mariadb;
            M.library_end ())
 
-  let dispatch q v = try
-     dispatch q v
-    with Failure f -> Lwt.fail_with ""
+  let dispatch q v = try dispatch q v with Failure f -> Lwt.fail_with ""
 
   let insert_log_
       ({ stack; message; level; origin; id; created_at } : log_stored) =
-    dispatch
-      "INSERT INTO logs (id, stack, message, level, origin, created_at) \
-       VALUES(?, ?, ?, ?, ?, ?)"
+    print_log_stored { stack; message; level; origin; id; created_at };
+    dispatch "INSERT INTO logs VALUES(?, ?, ?, ?, ?, ?)"
       [|
-        `String stack;
+        `String id;
+        `Int created_at;
         `String message;
         `String level;
         `String origin;
-        `Float created_at;
-        `String id;
+        `String stack;
       |]
+
   let insert_log_db = add_db_details >> insert_log_
+
   let read_all_logs () =
-    dispatch "SELECT * FROM logs" [||] >|= List.map log_of_row 
+    dispatch "SELECT * FROM logs" [||] >|= List.map log_of_row
 end
 
 module DB = MariaDB
-
-
