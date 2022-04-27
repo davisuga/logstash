@@ -1,7 +1,7 @@
 {
   "name": "making-a-crud-in-ocaml",
   "dependencies": {
-    "ocaml": "4.13.x",
+    "ocaml": "4.14.x",
     "@opam/dune": "*",
     "@opam/opium": "*",
     "@opam/ppx_deriving_yojson": "*",
