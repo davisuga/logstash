@@ -140,12 +140,20 @@ module MariaDB = struct
     in
     Lwt.return (Lwt_stream.from next)
 
+  let tap fn stuff =
+    fn stuff;
+    stuff
+
   let dispatch query variables =
-    connect () >>= or_die "Failed to connect" >>= fun mariadb ->
-    M.prepare mariadb query >>= or_die "Failed to prepare" >>= fun stmt ->
+    let* mariadb = connect () >>= or_die "Failed to connect" in
+    let* stmt = M.prepare mariadb query >>= or_die "Failed to prepare" in
     M.Stmt.execute stmt variables
     >>= or_die "Failed to execute with"
     >>= stream >>= Lwt_stream.to_list
+    |> tap (fun _ ->
+           M.Stmt.close stmt;
+           M.close mariadb;
+           M.library_end ())
 
   let dispatch q v = try
      dispatch q v
