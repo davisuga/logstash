@@ -23,5 +23,6 @@
     "start": ". ./.env; ./_build/default/bin/main.exe",
     "build:watch": ". ./.env; dune build -w --profile production",
     "exec": ". ./.env; dune exec logstash --profile production"
+    
   }
 }
