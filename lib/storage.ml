@@ -33,10 +33,6 @@ let flip fn a b = fn b a
 let ( let* ) = Lwt.bind
 
 (* open Crud *)
-let db_url =
-  match Utils.Env.getVar "DATABASE_URL" with
-  | Ok url -> Uri.of_string url
-  | Error e -> failwith e
 
 let add_db_details ({ stack; message; level; origin } : log) =
   let id = Uuidm.v `V4 |> Uuidm.to_string in
