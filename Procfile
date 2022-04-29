@@ -1,1 +1,1 @@
-web: ./_build/default/bin/main.exe
+web: ./main.exe
