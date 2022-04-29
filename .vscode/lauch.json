@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "test_program",
+      "type": "ocamlearlybird",
+      "request": "launch",
+      "stopOnEntry": true,
+      "console": "integratedTerminal",
+      "program": "${workspaceFolder}/_build/default/examples/interact/test_program.bc",
+      "onlyDebugGlob": "<${workspaceFolder}/**/*>",
+      "yieldSteps": 1024,
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
