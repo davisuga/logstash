@@ -33,6 +33,6 @@ let post_client_log =
           Lwt.return (Response.of_plain_text @@ "Invalid json input: " ^ e))
 
 let start_server () =
-  App.empty |> App.port 3001
-  |> Utils.with_msg "Starting server at http://localhost:3001"
+  App.empty |> App.port 80
+  |> Utils.with_msg "Starting server at http://localhost:80"
   |> status |> post_client_log |> read_client_logs |> App.run_multicore
