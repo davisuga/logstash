@@ -1,4 +1,5 @@
 open Opium
+open Lwt
 
 let ( let* ) = Lwt.bind
 
@@ -10,13 +11,17 @@ let status =
 
 let make_log_jsons = [%to_yojson: log_stored list]
 
+let yojson_list_join (l : Yojson.Safe.t list) =
+  List.fold_left Yojson.Safe.Util.combine Yojson.Safe.(`Null) l
+
 let read_client_logs =
   App.get "/logs" (fun _ ->
       print_endline "Reading client logs";
       let* logs = DB.read_all_logs () in
+      let logs = logs |> make_log_jsons in
+
       print_endline "Client logs read";
-      let json = make_log_jsons logs in
-      Lwt.return (Response.of_json json))
+      Lwt.return @@ Response.of_json logs)
 
 let post_client_log =
   App.post "/logs" (fun req ->
@@ -31,6 +36,6 @@ let post_client_log =
           Lwt.return (Response.of_plain_text @@ "Invalid json input: " ^ e))
 
 let start_server () =
-  App.empty
-  |> Utils.with_msg "Starting server at http://localhost:3000"
+  App.empty |> App.port 3001
+  |> Utils.with_msg "Starting server at http://localhost:3001"
   |> status |> post_client_log |> read_client_logs |> App.run_multicore
