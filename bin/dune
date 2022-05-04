@@ -2,3 +2,5 @@
  (public_name logstash)
  (name main)
  (libraries logstash))
+
+(data_only_dirs _esy esy.lock lib node_modules)
