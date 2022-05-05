@@ -18,19 +18,16 @@ let get_logs _ =
 
 let get_root _ = html "Up and running..."
 
+let post_log req =
+  let%lwt body = Dream.body req in
+  let input_log_option = log_of_yojson (JSON.from_string body) in
+  match input_log_option with
+  | Ok log ->
+      let* _ = DB.insert_log_db log in
+      Dream.respond ~code:203 "ok"
+  | Error e -> Dream.respond ~code:403 @@ "Invalid json input: " ^ e
+
 let start_server () =
   run ~interface:"0.0.0.0" ~port
   @@ logger
-  @@ router
-       [
-         get "/" get_root;
-         get "/logs" get_logs;
-         post "/logs" (fun req ->
-             let%lwt body = Dream.body req in
-             let input_log_option = log_of_yojson (JSON.from_string body) in
-             match input_log_option with
-             | Ok log ->
-                 let* _ = DB.insert_log_db log in
-                 Dream.respond ~code:203 "ok"
-             | Error e -> Dream.respond ~code:403 @@ "Invalid json input: " ^ e);
-       ]
+  @@ router [ get "/" get_root; get "/logs" get_logs; post "/logs" post_log ]
