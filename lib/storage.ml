@@ -1,5 +1,7 @@
 module type DB = Rapper_helper.CONNECTION
 
+open Utils
+
 exception Query_failed of string
 
 let ( >> ) f g x = g (f x)
@@ -33,10 +35,6 @@ let flip fn a b = fn b a
 let ( let* ) = Lwt.bind
 
 (* open Crud *)
-let db_url =
-  match Utils.Env.getVar "DATABASE_URL" with
-  | Ok url -> Uri.of_string url
-  | Error e -> failwith e
 
 let add_db_details ({ stack; message; level; origin } : log) =
   let id = Uuidm.v `V4 |> Uuidm.to_string in
@@ -79,8 +77,6 @@ module MariaDB = struct
           | e -> Lwt.fail e)
   end)
 
-  let env var def = try Sys.getenv var with Not_found -> def
-
   let or_die where = function
     | Ok r -> Lwt.return r
     | Error (i, e) -> Lwt.fail_with @@ sprintf "%s: (%d) %s" where i e
@@ -94,38 +90,6 @@ module MariaDB = struct
     let id = M.Row.StringMap.find "id" row |> M.Field.string in
     let log = { stack; message; level; origin; id; created_at } in
     log
-
-  let print_row row =
-    log_of_row row |> Format.printf "%a" pp_log_stored;
-    ( Lwt_io.printf "---\n%!" >>= fun () ->
-      M.Row.StringMap.fold
-        (fun name field _ ->
-          Lwt_io.printf "%20s " name >>= fun () ->
-          match M.Field.value field with
-          | `Int i -> Lwt_io.printf "%d\n%!" i
-          | `Float x -> Lwt_io.printf "%f\n%!" x
-          | `String s -> Lwt_io.printf "%s\n%!" s
-          | `Bytes b -> Lwt_io.printf "%s\n%!" (Bytes.to_string b)
-          | `Time t ->
-              Lwt_io.printf "%04d-%02d-%02d %02d:%02d:%02d\n%!" (M.Time.year t)
-                (M.Time.month t) (M.Time.day t) (M.Time.hour t)
-                (M.Time.minute t) (M.Time.second t)
-          | `Null -> Lwt_io.printf "NULL\n%!")
-        row Lwt.return_unit );
-    row
-
-  let get_field it row fieldname =
-    let field = M.Row.StringMap.find "message" row in
-    match M.Field.value field with
-    | `Int i -> Lwt_io.printf "%d\n%!" i
-    | `Float x -> Lwt_io.printf "%f\n%!" x
-    | `String s -> Lwt_io.printf "%s\n%!" s
-    | `Bytes b -> Lwt_io.printf "%s\n%!" (Bytes.to_string b)
-    | `Time t ->
-        Lwt_io.printf "%04d-%02d-%02d %02d:%02d:%02d\n%!" (M.Time.year t)
-          (M.Time.month t) (M.Time.day t) (M.Time.hour t) (M.Time.minute t)
-          (M.Time.second t)
-    | `Null -> Lwt_io.printf "NULL\n%!"
 
   let connect () =
     M.connect
@@ -149,12 +113,8 @@ module MariaDB = struct
     let* mariadb = connect () >>= or_die "Failed to connect" in
     let* stmt = M.prepare mariadb query >>= or_die "Failed to prepare" in
     M.Stmt.execute stmt variables >>= or_die "Failed to execute with" >>= stream
-  (* >|= tap (fun s ->
-          M.Stmt.close stmt;
-          M.close mariadb;
-          M.library_end ()) *)
 
-  let dispatch q v = try dispatch q v with Failure f -> Lwt.fail_with ""
+  let dispatch q v = try dispatch q v with Failure _ -> Lwt.fail_with ""
 
   let insert_log_
       ({ stack; message; level; origin; id; created_at } : log_stored) =
