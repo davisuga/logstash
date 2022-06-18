@@ -144,3 +144,21 @@ module MariaDB = struct
 end
 
 module DB = MariaDB
+type form = {
+  name : string;
+  email : string;
+  ra : string;
+}[@@deriving show, yojson]
+module KV = struct
+  open! Lwt.Syntax
+
+  let conn = Redis_lwt.Client.connect {host ="localhost"; port=6379} |> Lwt_main.run
+    
+
+  let get_forms () = Redis_lwt.Client.lrange conn "forms" 0 (-1)
+
+  let save_form = Redis_lwt.Client.lpush conn "forms"
+  
+  (* let run = Redis_lwt.Client.send_request conn *)
+
+end

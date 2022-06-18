@@ -1,5 +1,5 @@
 (library
  (name logstash)
- (libraries dream uuidm caqti ppx_rapper_lwt caqti-lwt caqti-driver-mariadb)
+ (libraries dream uuidm caqti ppx_rapper_lwt caqti-lwt redis-lwt caqti-driver-mariadb)
  (preprocess
-  (pps ppx_deriving_yojson ppx_deriving.show ppx_rapper lwt_ppx)))
+  (pps ppx_deriving_yojson ppx_deriving.show ppx_rapper lwt_ppx )))

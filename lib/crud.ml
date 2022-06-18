@@ -1,13 +1,12 @@
 open Storage
-open! Lwt
-open Utils
+open Lwt
+
 open Dream
 module JSON = Yojson.Safe
 
 let ( let* ) = Lwt.bind
 let make_log_jsons = [%to_yojson: log_stored list]
 let make_log_jsons = make_log_jsons >> JSON.to_string
-let port = env "PORT" "8080" |> int_of_string
 
 let get_logs _ =
   let* logs = DB.read_all_logs () in
@@ -30,7 +29,16 @@ let post_log req =
       Dream.respond ~code:203 "ok"
   | Error e -> handle_invalid_input e
 
-let start_server () =
+let post_form req =
+  let* parsed_form = Dream.body req in
+  
+  let* resp_code =  KV.save_form [parsed_form] in
+  Dream.html (resp_code |> string_of_int)
+
+let all_forms _ =
+  let* resp =  KV.get_forms () >|= String.concat "," in
+  Dream.json (Printf.sprintf "[%s]" resp)
+
+let start_server port =
   run ~interface:"0.0.0.0" ~port
-  @@ logger
-  @@ router [ get "/" get_root; get "/logs" get_logs; post "/logs" post_log ]
+  @@ router [post "/form" post_form; get "forms" all_forms;  get "/" get_root; get "/logs" get_logs; post "/logs" post_log ]

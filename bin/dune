@@ -1,5 +1,7 @@
 (executable
  (public_name logstash)
+ (modes
+  (native exe))
  (name main)
  (libraries logstash))
 
