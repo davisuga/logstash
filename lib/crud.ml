@@ -39,6 +39,10 @@ let all_forms _ =
   let* resp =  KV.get_forms () >|= String.concat "," in
   Dream.json (Printf.sprintf "[%s]" resp)
 
+let all_riders _ =
+  let* riders = KV.get_g() >|= Yojson.Safe.to_string in
+  Dream.json riders
+
 let start_server port =
   run ~interface:"0.0.0.0" ~port
-  @@ router [post "/form" post_form; get "forms" all_forms;  get "/" get_root; get "/logs" get_logs; post "/logs" post_log ]
+  @@ router [post "/form" post_form; get "forms" all_forms;get "rides" all_riders;  get "/" get_root; get "/logs" get_logs; post "/logs" post_log ]

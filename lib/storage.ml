@@ -153,12 +153,39 @@ module KV = struct
   open! Lwt.Syntax
 
   let conn = Redis_lwt.Client.connect {host ="localhost"; port=6379} |> Lwt_main.run
-    
+  let comm = ["GRAPH.QUERY"; "MotoGP" ;"match (n:Rider) return n"]
 
   let get_forms () = Redis_lwt.Client.lrange conn "forms" 0 (-1)
 
   let save_form = Redis_lwt.Client.lpush conn "forms"
   
-  (* let run = Redis_lwt.Client.send_request conn *)
-
+  let run = Redis_lwt.Client.send_request conn
+  let rec string_of_reply: Redis_lwt.Client.reply -> string = function
+  | `Status s -> Printf.sprintf "(Status %s)" s
+  | `Moved {slot; host; port} -> Printf.sprintf "MOVED %d %s:%i" slot host port
+  | `Ask {slot; host; port} -> Printf.sprintf "ASK %d %s:%i" slot host port
+  | `Error  s -> Printf.sprintf "(Error %s)" s
+  | `Int i -> Printf.sprintf "(Int %i)" i
+  | `Int64 i -> Printf.sprintf "(Int64 %Li)" i
+  | `Bulk None -> "(Bulk None)"
+  | `Bulk (Some s) -> Printf.sprintf "(Bulk (Some %s))" s
+  | `Multibulk replies ->
+    let x = List.map string_of_reply replies |> String.concat "; " in
+    Printf.sprintf "Multibulk [ %s; ]" x
+ 
+  let rec json_of_reply :Redis_lwt.Client.reply -> Yojson.Safe.t = function
+  | `Status s -> `String s
+  | `Moved {slot; host; port} -> `Assoc ["moved",`Assoc [ "slot" , `Int slot; "host" , `String host; "port" , `Int port ]]
+  | `Ask {slot; host; port} -> `Assoc ["ask", `Assoc [ "slot" , `Int slot; "host" , `String host; "port" , `Int port ]]
+  | `Error  s -> `Assoc ["error", `String s]
+  | `Int i -> `Int i
+  | `Int64 i -> `Int (i |> Int64.to_int)
+  | `Bulk None -> `Null
+  | `Bulk (Some s) -> `String s 
+  
+  (* | `Multibulk [`Multibulk [`Bulk (Some key) ; replyv]] -> `Assoc [key, json_of_reply replyv] *)
+  | `Multibulk  [ `Multibulk properties] -> `List (properties |> List.map json_of_reply) 
+  | `Multibulk replies -> `List (replies |> List.map json_of_reply)
+  let get_g () = run comm >|= json_of_reply
+    
 end
