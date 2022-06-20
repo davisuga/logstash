@@ -47,9 +47,10 @@ let with_msg ?(arg = "") msg any =
        | Error e -> (
            try Ok (StringMap.find name (readDotEnv ())) with Not_found -> Error e)
    end *)
-let env var def = try Sys.getenv var with Not_found -> def
+let env var def =
+  try Sys.getenv var with
+  | Not_found -> def
 
 let env_exn var =
-  try Sys.getenv var
-  with Not_found ->
-    failwith (__LOC__ ^ ": Environment variable " ^ var ^ " not found")
+  try Sys.getenv var with
+  | Not_found -> failwith (__LOC__ ^ ": Environment variable " ^ var ^ " not found")
